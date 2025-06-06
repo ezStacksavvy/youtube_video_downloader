@@ -31,8 +31,13 @@ else:
 
 # --- Initialize Flask App ---
 app = Flask(__name__)
-CORS(app) # Enable Cross-Origin Resource Sharing for your React frontend.
-
+# --- Configure CORS to allow multiple frontends ---
+origins = [
+    "http://localhost:3000", # For local development
+    "https://ytv-downloader.netlify.app/", # First live site
+    "https://youtube-video-downloader-74eht97c2.vercel.app/"  # Second live site
+]
+CORS(app, resources={r"/api/*": {"origins": origins}})
 
 # --- Helper Function ---
 def sanitize_filename(filename):
