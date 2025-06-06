@@ -32,11 +32,13 @@ else:
 # --- Initialize Flask App ---
 app = Flask(__name__)
 # --- Configure CORS to allow multiple frontends ---
+# --- Configure CORS to allow multiple frontends ---
 origins = [
     "http://localhost:3000", # For local development
-    "https://ytv-downloader.netlify.app/", # First live site
-    "https://youtube-video-downloader-74eht97c2.vercel.app/"  # Second live site
+    "https://ytv-downloader.netlify.app", # First live site (NO SLASH)
+    "https://youtube-video-downloader-74eht97c2.vercel.app"  # Second live site (NO SLASH)
 ]
+
 CORS(app, resources={r"/api/*": {"origins": origins}})
 
 # --- Helper Function ---
