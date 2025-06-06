@@ -24,7 +24,7 @@ def get_info():
     if not url:
         return jsonify({"error": "URL is required"}), 400
     try:
-        ydl_opts = {'quiet': True, 'no_warnings': True}
+        ydl_opts = {'quiet': True, 'no_warnings': True, 'cookiefile': 'cookies.txt'}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
@@ -70,11 +70,12 @@ def process_download():
         filename = f"{safe_title}_{height}p.mp4"
         output_path = os.path.join(DOWNLOAD_FOLDER, filename)
         ydl_opts = {
-            'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]',
-            'outtmpl': output_path,
-            'quiet': True,
-            'no_warnings': True,
-        }
+        'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]',
+        'outtmpl': output_path,
+        'quiet': True,
+        'no_warnings': True,
+        'cookiefile': 'cookies.txt'
+    }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
         return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
