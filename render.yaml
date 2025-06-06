@@ -3,14 +3,17 @@ services:
   - type: web
     name: youtube-downloader-backend
     env: python
-    region: singapore # Or your preferred region
+    region: singapore # Your preferred region
     rootDir: backend
+    plan: free # Define the plan here
     buildFilter:
       paths:
-      - backend/**
-    buildpacks:
-      # Add the ffmpeg buildpack here
-      - url: https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
-    buildCommand: "pip install -r requirements.txt"
+        - backend/**
+    
+    # --- FIX IS HERE: 'buildCommand' and 'buildpacks' are nested under 'build' ---
+    build:
+      buildCommand: "pip install -r requirements.txt"
+      buildpacks:
+        - url: https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
+        
     startCommand: "gunicorn --worker-class gevent --timeout 120 --bind 0.0.0.0:$PORT app:app"
-    plan: free
