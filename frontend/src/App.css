@@ -1,0 +1,61 @@
+/* --- Global Theme & Transitions --- */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+[data-bs-theme="dark"] body {
+  background-color: #212529; /* Dark background */
+}
+
+[data-bs-theme="light"] body {
+  background-color: #f8f9fa; /* Light background */
+}
+
+/* --- Main Card Styles --- */
+.main-card {
+  border-width: 2px;
+  border-style: dashed;
+}
+
+[data-bs-theme="dark"] .main-card {
+  border-color: #495057;
+}
+
+[data-bs-theme="light"] .main-card {
+  border-color: #dee2e6;
+}
+
+/* --- Results Card Styles --- */
+.results-card .card-img {
+  object-fit: cover;
+  height: 100%;
+  max-height: 250px; /* Adjust as needed */
+}
+
+@media (min-width: 768px) {
+  .results-card .card-img {
+    border-top-right-radius: 0;
+    border-bottom-left-radius: var(--bs-card-inner-border-radius);
+    max-height: none;
+  }
+}
+
+/* --- Bootstrap Component Tweaks --- */
+.btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.accordion-button:not(.collapsed) {
+  color: var(--bs-body-color);
+  background-color: var(--bs-body-tertiary);
+}
+
+.accordion-button:focus {
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
