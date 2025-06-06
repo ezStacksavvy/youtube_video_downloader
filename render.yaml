@@ -1,0 +1,16 @@
+services:
+  # A Web Service for the Python Backend
+  - type: web
+    name: youtube-downloader-backend
+    env: python
+    region: singapore # Or your preferred region
+    rootDir: backend
+    buildFilter:
+      paths:
+      - backend/**
+    buildpacks:
+      # Add the ffmpeg buildpack here
+      - url: https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn --worker-class gevent --timeout 120 --bind 0.0.0.0:$PORT app:app"
+    plan: free
