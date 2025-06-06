@@ -15,3 +15,6 @@ yarn-error.log*
 *.pyc
 *.pyo
 *.pyd
+
+# Ignore sensitive files
+cookies.txt
