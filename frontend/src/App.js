@@ -6,54 +6,37 @@ import {
 import { SunFill, MoonStarsFill } from 'react-bootstrap-icons';
 import './App.css';
 
-// --- IMPORTANT: Place your Adsterra direct link here ---
-const adsterraLink = 'https://politicsgrowinghollow.com/hxbkvsvx3q?key=57ca02e3d2bc5896bb2071c9b13a6904';
-
 function App() {
-  // Main app state
+  // Sets the default theme to 'dark' on initial load
   const [theme, setTheme] = useState('dark');
+  
   const [url, setUrl] = useState('');
   const [videoInfo, setVideoInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // State for the new unlock flow
-  const [unlockStep, setUnlockStep] = useState(0); // 0: initial, 1: counting1, 2: readyFor2, 3: counting2, 4: unlocked
-  const [countdown, setCountdown] = useState(0);
+  const [isDownloading, setIsDownloading] = useState({ type: null, quality: null });
 
-  // Effect to manage the countdown timer
+  // This hook applies the theme to the entire document body
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer); // Cleanup timer
-    } else {
-      // When countdown finishes, move to the next step
-      if (unlockStep === 1) {
-        setUnlockStep(2); // Ready for step 2
-      } else if (unlockStep === 3) {
-        setUnlockStep(4); // Unlocked!
-      }
-    }
-  }, [countdown, unlockStep]);
+    document.body.setAttribute('data-bs-theme', theme);
+  }, [theme]);
 
-  // Main fetch logic (unchanged)
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setVideoInfo(null);
     setError('');
-    setUnlockStep(0); // <-- Reset unlock flow on new submission
-    setCountdown(0);
 
     if (!url.trim()) {
       setError('Please enter a valid YouTube URL.');
       return;
     }
-    // ... (the rest of the submit logic is the same)
+
     setIsLoading(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/get-info`, {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/get-info`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
@@ -67,31 +50,15 @@ function App() {
       setIsLoading(false);
     }
   };
-  
-  // Handler for the unlock buttons
-  const handleUnlockClick = (step) => {
-    // Open the ad link in a new tab
-    window.open(adsterraLink, '_blank');
-    
-    // Start the appropriate countdown
-    if (step === 1) {
-      setUnlockStep(1);
-    } else if (step === 2) {
-      setUnlockStep(3);
-    }
-    setCountdown(5); // Start countdown from 5 seconds
-  };
-  
-  // --- The rest of the component (theme toggle, video download logic) is mostly the same ---
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   const handleVideoDownload = async (quality) => {
-    // This function remains unchanged
     if (!quality) return;
     setIsDownloading({ type: 'video', quality });
     setError('');
+
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/process-download`, {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/process-download`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,10 +67,12 @@ function App() {
           title: videoInfo.title
         }),
       });
+
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.error || 'Download failed on the server.');
       }
+      
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -121,19 +90,17 @@ function App() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
+
     } catch (err) {
       setError(err.message);
     } finally {
       setIsDownloading({ type: null, quality: null });
     }
   };
-  const [isDownloading, setIsDownloading] = useState({ type: null, quality: null });
-
 
   return (
     <>
       <Navbar bg={theme} variant={theme} expand="lg" className="shadow-sm">
-        {/* Navbar JSX is unchanged */}
         <Container>
           <Navbar.Brand href="#home" className="fw-bold">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" className="bi bi-youtube me-2" viewBox="0 0 16 16" style={{ color: '#0d6efd' }}>
@@ -150,11 +117,11 @@ function App() {
         </Container>
       </Navbar>
 
-      <Container className="my-5">
+      {/* --- THIS IS THE FIXED LINE --- */}
+      <Container fluid className="App py-5" data-bs-theme={theme}>
         <Row className="justify-content-center">
           <Col lg={8}>
             <Card className="text-center main-card">
-              {/* Input form JSX is unchanged */}
               <Card.Body>
                 <Card.Title as="h2" className="fw-bold mb-3">YouTube Video Downloader</Card.Title>
                 <Card.Text className="text-muted mb-4">
@@ -185,49 +152,45 @@ function App() {
                   <Col md={8}>
                     <Card.Body>
                       <Card.Title>{videoInfo.title}</Card.Title>
-
-                      {/* --- THIS IS THE NEW DYNAMIC SECTION --- */}
-
-                      {/* Step 4: Show Download Links */}
-                      {unlockStep === 4 && (
-                        <div>
-                          <div className="mt-3">
-                            <h5 className="mb-3">Video (MP4)</h5>
-                            <div className="d-flex flex-wrap">
-                              {videoInfo.video_formats.map((format, index) => (
-                                <Button key={`video-${index}`} variant="outline-primary" className="me-2 mb-2" onClick={() => handleVideoDownload(format.resolution)} disabled={isDownloading.type === 'video'}>
-                                  {isDownloading.type === 'video' && isDownloading.quality === format.resolution ? (<Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />) : (format.resolution.split('x')[1] + 'p')}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="mt-4">
-                            <h5 className="mb-3">Audio Only</h5>
-                            <div className="d-flex flex-wrap">
-                              {videoInfo.audio_formats.length > 0 ? videoInfo.audio_formats.map((format, index) => (<Button key={`audio-${index}`} variant="outline-secondary" className="me-2 mb-2" href={format.url} target="_blank" download>{`${format.quality} (${format.ext.toUpperCase()})`}</Button>)) : <p className="text-muted">No audio-only formats found.</p>}
-                            </div>
-                          </div>
+                      
+                      <div className="mt-3">
+                        <h5 className="mb-3">Video (MP4)</h5>
+                        <div className="d-flex flex-wrap">
+                          {videoInfo.video_formats.map((format, index) => (
+                            <Button 
+                                key={`video-${index}`} 
+                                variant="outline-primary" 
+                                className="me-2 mb-2" 
+                                onClick={() => handleVideoDownload(format.resolution)}
+                                disabled={isDownloading.type === 'video'}
+                              >
+                                {isDownloading.type === 'video' && isDownloading.quality === format.resolution ? (
+                                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                                ) : (
+                                  format.resolution.split('x')[1] + 'p'
+                                )}
+                            </Button>
+                          ))}
                         </div>
-                      )}
+                      </div>
 
-                      {/* Steps 0-3: Show Unlock Buttons */}
-                      {unlockStep < 4 && (
-                        <div className="mt-4 text-center">
-                          <h5 className="mb-3">Complete 2 Steps to Unlock Links</h5>
-                          <Row>
-                            <Col className="d-grid">
-                              <Button variant="danger" size="lg" disabled={unlockStep !== 0} onClick={() => handleUnlockClick(1)}>
-                                {unlockStep === 1 ? `Unlocking in ${countdown}s...` : 'Unlock Link 1'}
-                              </Button>
-                            </Col>
-                            <Col className="d-grid">
-                              <Button variant="danger" size="lg" disabled={unlockStep !== 2} onClick={() => handleUnlockClick(2)}>
-                                {unlockStep === 3 ? `Unlocking in ${countdown}s...` : 'Unlock Link 2'}
-                              </Button>
-                            </Col>
-                          </Row>
-                        </div>
-                      )}
+                      <div className="mt-4">
+                        <h5 className="mb-3">Audio Only</h5>
+                         <div className="d-flex flex-wrap">
+                            {videoInfo.audio_formats.length > 0 ? videoInfo.audio_formats.map((format, index) => (
+                               <Button 
+                                 key={`audio-${index}`} 
+                                 variant="outline-secondary" 
+                                 className="me-2 mb-2" 
+                                 href={format.url} 
+                                 target="_blank" 
+                                 download
+                               >
+                                 {`${format.quality} (${format.ext.toUpperCase()})`}
+                               </Button>
+                            )) : <p className="text-muted">No audio-only formats found.</p>}
+                         </div>
+                      </div>
 
                     </Card.Body>
                   </Col>
@@ -236,14 +199,13 @@ function App() {
             )}
 
             <Accordion className="mt-5">
-              {/* Accordion JSX is unchanged */}
               <Accordion.Item eventKey="0">
                 <Accordion.Header>How To Use This Tool</Accordion.Header>
                 <Accordion.Body>
                   <p><strong>1. Find a Video:</strong> Go to YouTube and copy the URL of the video you want to download.</p>
                   <p><strong>2. Paste the URL:</strong> Paste the copied URL into the input box above and click "Go".</p>
-                  <p><strong>3. Unlock Links:</strong> Click "Unlock Link 1" and wait for the countdown, then click "Unlock Link 2" and wait for the second countdown. This helps support our site!</p>
-                  <p><strong>4. Download:</strong> The download links for all available qualities will appear. Click the one you want!</p>
+                  <p><strong>3. Select Quality:</strong> The tool will show you a thumbnail and available download options. Click the button for the video or audio quality you want.</p>
+                  <p><strong>4. Download:</strong> For high-quality video, the server will process it first, then your download will start. For audio, the download will begin immediately.</p>
                 </Accordion.Body>
               </Accordion.Item>
             </Accordion>
@@ -251,7 +213,6 @@ function App() {
         </Row>
         
         <footer className="text-center text-muted mt-5 py-4 border-top">
-          {/* Footer JSX is unchanged */}
           © {new Date().getFullYear()} Video Downloader. All Rights Reserved by DTW ASSET.
         </footer>
       </Container>
