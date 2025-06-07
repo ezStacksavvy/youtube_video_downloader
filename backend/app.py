@@ -13,6 +13,7 @@ CORS(app)
 
 COOKIE_FILE_PATH = 'cookies.txt'
 if not os.path.exists(COOKIE_FILE_PATH):
+    # This print statement is useful for local debugging
     print("WARNING: cookies.txt not found. This will likely fail on a live server.")
 
 def sanitize_filename(filename):
@@ -20,6 +21,7 @@ def sanitize_filename(filename):
 
 @app.route('/api/get-info', methods=['POST'])
 def get_info():
+    # This function remains unchanged
     data = request.get_json()
     url = data.get('url')
     if not url:
@@ -51,10 +53,12 @@ def process_download():
     video_id, quality = data.get('video_id'), data.get('quality')
     if not all([video_id, quality]):
         return jsonify({"error": "Missing video_id or quality parameter."}), 400
+    
+    # Define output_path outside the try block so it's accessible in 'finally'
+    output_path = None
+    
     try:
         url = f"https://www.youtube.com/watch?v={video_id}"
-
-        # --- THE FIX IS HERE: Add cookiefile to this call as well ---
         info_opts = {'quiet': True, 'no_warnings': True, 'cookiefile': COOKIE_FILE_PATH}
         with yt_dlp.YoutubeDL(info_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -76,8 +80,17 @@ def process_download():
             ydl.download([url])
             
         return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
+    
     except Exception as e:
         return jsonify({"error": f"Failed to process download: {str(e)}"}), 500
+    
+    # --- THE FIX IS HERE: Automatic Cleanup ---
+    finally:
+        # This block will execute after the 'return' statement has sent the file.
+        # It cleans up the downloaded file from the server's disk.
+        if output_path and os.path.exists(output_path):
+            print(f"Cleaning up file: {output_path}")
+            os.remove(output_path)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
