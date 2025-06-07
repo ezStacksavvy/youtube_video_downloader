@@ -12,9 +12,10 @@ yarn-error.log*
 /backend/venv
 /backend/__pycache__
 /backend/downloads
+
 *.pyc
 *.pyo
 *.pyd
 
 # Ignore sensitive files
-cookies.txt
+backend/cookies.txt
