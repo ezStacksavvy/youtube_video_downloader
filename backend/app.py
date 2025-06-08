@@ -9,12 +9,8 @@ DOWNLOAD_FOLDER = 'downloads'
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-# --- Initialize Flask App ---
 app = Flask(__name__)
-# --- FIX IS HERE: Expose headers for the frontend to read ---
 CORS(app, expose_headers=['Content-Length', 'Content-Disposition'])
-
-# (The rest of the file is the same as the run.bat version)
 
 def sanitize_filename(filename):
     return re.sub(r'[\/\?<>\\:\*\|"]', '_', filename)
@@ -26,6 +22,7 @@ def get_info():
     if not url:
         return jsonify({"error": "URL is required"}), 400
     try:
+        # --- ENSURE COOKIE FILE IS USED HERE ---
         ydl_opts = {'quiet': True, 'no_warnings': True, 'cookiefile': 'cookies.txt'}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -37,10 +34,10 @@ def get_info():
                         unique_resolutions.add(resolution)
                         video_formats.append({'resolution': resolution})
                 if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
-                    audio_formats.append({'quality': f.get('format_note', 'Audio'), 'filesize_str': f.get('filesize_approx_str', 'N/A'), 'url': f.get('url'), 'ext': f.get('ext')})
+                    audio_formats.append({'quality': f.get('format_note', 'Audio'),'filesize_str': f.get('filesize_approx_str', 'N/A'),'url': f.get('url'), 'ext': f.get('ext')})
             video_formats.sort(key=lambda x: int(x['resolution'].split('x')[1]), reverse=True)
             audio_formats.sort(key=lambda x: x.get('abr') or 0, reverse=True)
-            return jsonify({'title': info.get('title', 'No title'), 'thumbnail': info.get('thumbnail', ''), 'video_formats': video_formats, 'audio_formats': audio_formats})
+            return jsonify({'title': info.get('title', 'No title'),'thumbnail': info.get('thumbnail', ''),'video_formats': video_formats,'audio_formats': audio_formats})
     except Exception as e:
         return jsonify({"error": f"An error occurred while fetching info: {str(e)}"}), 500
 
@@ -55,7 +52,8 @@ def process_download():
         safe_title = sanitize_filename(video_title)
         filename = f"{safe_title}_{height}p.mp4"
         output_path = os.path.join(DOWNLOAD_FOLDER, filename)
-        ydl_opts = {'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]', 'outtmpl': output_path, 'quiet': True, 'no_warnings': True, 'cookiefile': 'cookies.txt'}
+        # --- ENSURE COOKIE FILE IS USED HERE ---
+        ydl_opts = {'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]','outtmpl': output_path,'quiet': True,'no_warnings': True, 'cookiefile': 'cookies.txt'}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
         return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
