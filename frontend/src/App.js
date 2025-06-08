@@ -72,8 +72,14 @@ function App() {
       if (!response.ok || data.error) throw new Error(data.error || 'Failed to fetch info.');
       setVideoInfo(data);
     } catch (err) {
-      setError(err.message);
-    } finally {
+  // Check for the specific "Video unavailable" message
+  if (err.message && err.message.includes("Video unavailable")) {
+    setError("This video is unavailable. It may be private, deleted, or geographically restricted.");
+  } else {
+    // Show the original error for any other issues
+    setError(err.message);
+  }
+} finally {
       setIsLoading(false);
     }
   };
