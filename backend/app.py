@@ -1,5 +1,6 @@
 import os
 import re
+import tempfile # We need this library
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
@@ -9,13 +10,29 @@ DOWNLOAD_FOLDER = 'downloads'
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-# --- THE FIX IS HERE: Define the path for Render's Secret File ---
-# Render places secret files in /etc/secrets/
-# We also check if the file exists for local development
-COOKIE_FILE_PATH = '/etc/secrets/cookies.txt'
-if not os.path.exists(COOKIE_FILE_PATH):
-    # If we are running locally, use the local file in the same directory
-    COOKIE_FILE_PATH = 'cookies.txt'
+# --- THE FIX IS HERE: Logic to handle Render's Read-Only Secret File ---
+# 1. Define the path to Render's secret file
+RENDER_COOKIE_PATH = '/etc/secrets/cookies.txt'
+
+# 2. Define a path for a TEMPORARY, WRITABLE cookie file inside our app's directory
+# We use tempfile to create a unique filename to avoid conflicts
+temp_cookie_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
+WRITABLE_COOKIE_PATH = temp_cookie_file.name
+temp_cookie_file.close() # Close it so yt-dlp can use it
+
+# 3. Check if the Render secret file exists and copy its content
+if os.path.exists(RENDER_COOKIE_PATH):
+    with open(RENDER_COOKIE_PATH, 'r') as secret_file:
+        cookie_content = secret_file.read()
+        with open(WRITABLE_COOKIE_PATH, 'w') as temp_file:
+            temp_file.write(cookie_content)
+else:
+    # If we are running locally, check for a local cookies.txt
+    if os.path.exists('cookies.txt'):
+         with open('cookies.txt', 'r') as secret_file:
+            cookie_content = secret_file.read()
+            with open(WRITABLE_COOKIE_PATH, 'w') as temp_file:
+                temp_file.write(cookie_content)
 
 # --- Initialize Flask App ---
 app = Flask(__name__)
@@ -32,13 +49,12 @@ def get_info():
     if not url:
         return jsonify({"error": "URL is required"}), 400
     try:
-        # Get the proxy URL from the environment variables set on Render
         proxy_url = os.environ.get('PROXY_URL')
         
         ydl_opts = {
             'quiet': True, 
             'no_warnings': True,
-            'cookiefile': COOKIE_FILE_PATH # Use the correct path
+            'cookiefile': WRITABLE_COOKIE_PATH # Use the new writable path
         }
         
         if proxy_url:
@@ -83,11 +99,11 @@ def process_download():
             'outtmpl': output_path,
             'quiet': True,
             'no_warnings': True, 
-            'cookiefile': COOKIE_FILE_PATH # Use the correct path
+            'cookiefile': WRITABLE_COOKIE_PATH # Use the new writable path
         }
 
         if proxy_url:
-            ydl_opts['proxy'] = proxy_url
+            ydl_opts['proxy'] = proxy__url
             
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
