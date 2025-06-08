@@ -10,22 +10,40 @@ DOWNLOAD_FOLDER = 'downloads'
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-RENDER_COOKIE_PATH = '/etc/secrets/cookies.txt'
-temp_cookie_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
-WRITABLE_COOKIE_PATH = temp_cookie_file.name
-temp_cookie_file.close()
+# --- THE FINAL FIX: Robust Cookie Handling with Debugging ---
+# This new function prepares the cookie file and will crash if it fails.
+def prepare_cookie_file():
+    render_cookie_path = '/etc/secrets/cookies.txt'
+    local_cookie_path = 'cookies.txt'
+    
+    # Define a writable path for the final cookie file
+    temp_cookie_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt", mode='w', encoding='utf-8')
+    writable_cookie_path = temp_cookie_file.name
+    
+    source_path = None
+    if os.path.exists(render_cookie_path):
+        source_path = render_cookie_path
+    elif os.path.exists(local_cookie_path):
+        source_path = local_cookie_path
 
-if os.path.exists(RENDER_COOKIE_PATH):
-    with open(RENDER_COOKIE_PATH, 'r') as secret_file:
-        cookie_content = secret_file.read()
-        with open(WRITABLE_COOKIE_PATH, 'w') as temp_file:
-            temp_file.write(cookie_content)
-else:
-    if os.path.exists('cookies.txt'):
-         with open('cookies.txt', 'r') as secret_file:
+    if source_path:
+        with open(source_path, 'r') as secret_file:
             cookie_content = secret_file.read()
-            with open(WRITABLE_COOKIE_PATH, 'w') as temp_file:
-                temp_file.write(cookie_content)
+            # If the cookie content is empty, raise an error immediately
+            if not cookie_content.strip():
+                raise RuntimeError("CRITICAL ERROR: The source cookie file is empty!")
+            temp_cookie_file.write(cookie_content)
+    else:
+        # If no cookie file is found anywhere, this is a critical failure.
+        raise FileNotFoundError("CRITICAL ERROR: No cookie file found at /etc/secrets/cookies.txt or locally.")
+        
+    temp_cookie_file.close()
+    return writable_cookie_path
+
+# Prepare the cookie file once when the app starts.
+# If this fails, the app will crash and the Render logs will show the "CRITICAL ERROR" message.
+WRITABLE_COOKIE_PATH = prepare_cookie_file()
+
 
 # --- Initialize Flask App ---
 app = Flask(__name__)
@@ -33,6 +51,8 @@ CORS(app, expose_headers=['Content-Length', 'Content-Disposition'])
 
 def sanitize_filename(filename):
     return re.sub(r'[\/\?<>\\:\*\|"]', '_', filename)
+
+# --- All other code uses the prepared WRITABLE_COOKIE_PATH ---
 
 @app.route('/api/get-info', methods=['POST'])
 def get_info():
@@ -42,13 +62,8 @@ def get_info():
         return jsonify({"error": "URL is required"}), 400
     try:
         proxy_url = os.environ.get('PROXY_URL')
-        ydl_opts = {
-            'quiet': True, 
-            'no_warnings': True,
-            'cookiefile': WRITABLE_COOKIE_PATH
-        }
-        if proxy_url:
-            ydl_opts['proxy'] = proxy_url
+        ydl_opts = {'quiet': True, 'no_warnings': True, 'cookiefile': WRITABLE_COOKIE_PATH}
+        if proxy_url: ydl_opts['proxy'] = proxy_url
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             video_formats, audio_formats, unique_resolutions = [], [], set()
@@ -78,18 +93,8 @@ def process_download():
         filename = f"{safe_title}_{height}p.mp4"
         output_path = os.path.join(DOWNLOAD_FOLDER, filename)
         proxy_url = os.environ.get('PROXY_URL')
-        ydl_opts = {
-            'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]',
-            'outtmpl': output_path,
-            'quiet': True,
-            'no_warnings': True, 
-            'cookiefile': WRITABLE_COOKIE_PATH
-        }
-
-        if proxy_url:
-            # --- THIS IS THE CORRECTED LINE ---
-            ydl_opts['proxy'] = proxy_url # Only one underscore
-            
+        ydl_opts = {'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]', 'outtmpl': output_path, 'quiet': True, 'no_warnings': True, 'cookiefile': WRITABLE_COOKIE_PATH}
+        if proxy_url: ydl_opts['proxy'] = proxy_url
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
         return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
