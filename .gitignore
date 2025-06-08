@@ -19,3 +19,14 @@ yarn-error.log*
 
 # Ignore sensitive files
 backend/cookies.txt
+# Python
+backend/venv/
+backend/downloads/
+backend/cookies.txt
+__pycache__/
+*.pyc
+
+# Node
+frontend/node_modules/
+frontend/build/
+frontend/.env

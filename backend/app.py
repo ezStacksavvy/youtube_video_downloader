@@ -9,9 +9,19 @@ DOWNLOAD_FOLDER = 'downloads'
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
+# --- THE FIX IS HERE: Define the path for Render's Secret File ---
+# Render places secret files in /etc/secrets/
+# We also check if the file exists for local development
+COOKIE_FILE_PATH = '/etc/secrets/cookies.txt'
+if not os.path.exists(COOKIE_FILE_PATH):
+    # If we are running locally, use the local file in the same directory
+    COOKIE_FILE_PATH = 'cookies.txt'
+
+# --- Initialize Flask App ---
 app = Flask(__name__)
 CORS(app, expose_headers=['Content-Length', 'Content-Disposition'])
 
+# --- Helper Function ---
 def sanitize_filename(filename):
     return re.sub(r'[\/\?<>\\:\*\|"]', '_', filename)
 
@@ -22,10 +32,21 @@ def get_info():
     if not url:
         return jsonify({"error": "URL is required"}), 400
     try:
-        # --- ENSURE COOKIE FILE IS USED HERE ---
-        ydl_opts = {'quiet': True, 'no_warnings': True, 'cookiefile': 'cookies.txt'}
+        # Get the proxy URL from the environment variables set on Render
+        proxy_url = os.environ.get('PROXY_URL')
+        
+        ydl_opts = {
+            'quiet': True, 
+            'no_warnings': True,
+            'cookiefile': COOKIE_FILE_PATH # Use the correct path
+        }
+        
+        if proxy_url:
+            ydl_opts['proxy'] = proxy_url
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
+            
             video_formats, audio_formats, unique_resolutions = [], [], set()
             for f in info.get('formats', []):
                 if f.get('vcodec') != 'none' and f.get('resolution'):
@@ -35,8 +56,10 @@ def get_info():
                         video_formats.append({'resolution': resolution})
                 if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
                     audio_formats.append({'quality': f.get('format_note', 'Audio'),'filesize_str': f.get('filesize_approx_str', 'N/A'),'url': f.get('url'), 'ext': f.get('ext')})
+            
             video_formats.sort(key=lambda x: int(x['resolution'].split('x')[1]), reverse=True)
             audio_formats.sort(key=lambda x: x.get('abr') or 0, reverse=True)
+            
             return jsonify({'title': info.get('title', 'No title'),'thumbnail': info.get('thumbnail', ''),'video_formats': video_formats,'audio_formats': audio_formats})
     except Exception as e:
         return jsonify({"error": f"An error occurred while fetching info: {str(e)}"}), 500
@@ -52,8 +75,20 @@ def process_download():
         safe_title = sanitize_filename(video_title)
         filename = f"{safe_title}_{height}p.mp4"
         output_path = os.path.join(DOWNLOAD_FOLDER, filename)
-        # --- ENSURE COOKIE FILE IS USED HERE ---
-        ydl_opts = {'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]','outtmpl': output_path,'quiet': True,'no_warnings': True, 'cookiefile': 'cookies.txt'}
+        
+        proxy_url = os.environ.get('PROXY_URL')
+        
+        ydl_opts = {
+            'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]',
+            'outtmpl': output_path,
+            'quiet': True,
+            'no_warnings': True, 
+            'cookiefile': COOKIE_FILE_PATH # Use the correct path
+        }
+
+        if proxy_url:
+            ydl_opts['proxy'] = proxy_url
+            
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
         return send_from_directory(DOWNLOAD_FOLDER, filename, as_attachment=True)
