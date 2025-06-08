@@ -1,6 +1,6 @@
 import os
 import re
-import tempfile # We need this library
+import tempfile
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import yt_dlp
@@ -10,24 +10,17 @@ DOWNLOAD_FOLDER = 'downloads'
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
 
-# --- THE FIX IS HERE: Logic to handle Render's Read-Only Secret File ---
-# 1. Define the path to Render's secret file
 RENDER_COOKIE_PATH = '/etc/secrets/cookies.txt'
-
-# 2. Define a path for a TEMPORARY, WRITABLE cookie file inside our app's directory
-# We use tempfile to create a unique filename to avoid conflicts
 temp_cookie_file = tempfile.NamedTemporaryFile(delete=False, suffix=".txt")
 WRITABLE_COOKIE_PATH = temp_cookie_file.name
-temp_cookie_file.close() # Close it so yt-dlp can use it
+temp_cookie_file.close()
 
-# 3. Check if the Render secret file exists and copy its content
 if os.path.exists(RENDER_COOKIE_PATH):
     with open(RENDER_COOKIE_PATH, 'r') as secret_file:
         cookie_content = secret_file.read()
         with open(WRITABLE_COOKIE_PATH, 'w') as temp_file:
             temp_file.write(cookie_content)
 else:
-    # If we are running locally, check for a local cookies.txt
     if os.path.exists('cookies.txt'):
          with open('cookies.txt', 'r') as secret_file:
             cookie_content = secret_file.read()
@@ -38,7 +31,6 @@ else:
 app = Flask(__name__)
 CORS(app, expose_headers=['Content-Length', 'Content-Disposition'])
 
-# --- Helper Function ---
 def sanitize_filename(filename):
     return re.sub(r'[\/\?<>\\:\*\|"]', '_', filename)
 
@@ -50,19 +42,15 @@ def get_info():
         return jsonify({"error": "URL is required"}), 400
     try:
         proxy_url = os.environ.get('PROXY_URL')
-        
         ydl_opts = {
             'quiet': True, 
             'no_warnings': True,
-            'cookiefile': WRITABLE_COOKIE_PATH # Use the new writable path
+            'cookiefile': WRITABLE_COOKIE_PATH
         }
-        
         if proxy_url:
             ydl_opts['proxy'] = proxy_url
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
             video_formats, audio_formats, unique_resolutions = [], [], set()
             for f in info.get('formats', []):
                 if f.get('vcodec') != 'none' and f.get('resolution'):
@@ -72,10 +60,8 @@ def get_info():
                         video_formats.append({'resolution': resolution})
                 if f.get('vcodec') == 'none' and f.get('acodec') != 'none':
                     audio_formats.append({'quality': f.get('format_note', 'Audio'),'filesize_str': f.get('filesize_approx_str', 'N/A'),'url': f.get('url'), 'ext': f.get('ext')})
-            
             video_formats.sort(key=lambda x: int(x['resolution'].split('x')[1]), reverse=True)
             audio_formats.sort(key=lambda x: x.get('abr') or 0, reverse=True)
-            
             return jsonify({'title': info.get('title', 'No title'),'thumbnail': info.get('thumbnail', ''),'video_formats': video_formats,'audio_formats': audio_formats})
     except Exception as e:
         return jsonify({"error": f"An error occurred while fetching info: {str(e)}"}), 500
@@ -91,19 +77,18 @@ def process_download():
         safe_title = sanitize_filename(video_title)
         filename = f"{safe_title}_{height}p.mp4"
         output_path = os.path.join(DOWNLOAD_FOLDER, filename)
-        
         proxy_url = os.environ.get('PROXY_URL')
-        
         ydl_opts = {
             'format': f'bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={height}][ext=mp4]',
             'outtmpl': output_path,
             'quiet': True,
             'no_warnings': True, 
-            'cookiefile': WRITABLE_COOKIE_PATH # Use the new writable path
+            'cookiefile': WRITABLE_COOKIE_PATH
         }
 
         if proxy_url:
-            ydl_opts['proxy'] = proxy__url
+            # --- THIS IS THE CORRECTED LINE ---
+            ydl_opts['proxy'] = proxy_url # Only one underscore
             
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
