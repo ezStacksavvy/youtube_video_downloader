@@ -4,25 +4,19 @@ body {
 }
 
 [data-bs-theme="dark"] body {
-  background-color: #212529; /* Dark background */
+  background-color: #212529;
 }
 
 [data-bs-theme="light"] body {
-  background-color: #f8f9fa; /* Light background */
+  background-color: #f8f9fa;
 }
 
-.App {
-  min-height: 100vh; /* Force container to be at least full screen height */
-  display: flex; /* Enable flexbox for vertical centering */
-  flex-direction: column; /* Stack navbar, content, and footer vertically */
+/* --- Layout Fix --- */
+.App-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
-
-/* We add a new rule for the main content row to give it padding */
-.App > .row {
-  padding-top: 3rem;
-  padding-bottom: 3rem;
-}
-
 
 /* --- Main Card Styles --- */
 .main-card {
@@ -42,7 +36,7 @@ body {
 .results-card .card-img {
   object-fit: cover;
   height: 100%;
-  max-height: 250px; /* Adjust for mobile */
+  max-height: 250px;
 }
 
 @media (min-width: 768px) {
