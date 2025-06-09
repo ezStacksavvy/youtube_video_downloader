@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
   Container, Row, Col, Form, Button, Spinner, Alert,
   Card, Navbar, Nav, Accordion, ProgressBar
@@ -21,6 +20,7 @@ function App() {
   const [countdown, setCountdown] = useState(0);
   const [timerId, setTimerId] = useState(null);
   const [showDownloads, setShowDownloads] = useState(false);
+  const [serverHealthy, setServerHealthy] = useState(true); // Add this state
 
   useEffect(() => {
     document.body.setAttribute('data-bs-theme', theme);
@@ -36,6 +36,15 @@ function App() {
     }
     return () => { if (timerId) clearTimeout(timerId); };
   }, [countdown]);
+
+  useEffect(() => {
+    // Check server health on mount
+    checkServerHealth().then((healthy) => {
+      setServerHealthy(healthy);
+      if (!healthy) setError('Server is unavailable or required cookies are missing.');
+    });
+    // eslint-disable-next-line
+  }, []);
 
   const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
@@ -63,6 +72,20 @@ function App() {
       setError(err.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add this function to your App.js
+  const checkServerHealth = async () => {
+    try {
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/health`);
+      const data = await response.json();
+      console.log('Server health:', data);
+      return data.status === 'healthy' && data.cookies_available;
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return false;
     }
   };
   
@@ -147,10 +170,23 @@ function App() {
                 <Form onSubmit={handleSubmit}>
                   <Row className="g-2 justify-content-center">
                     <Col>
-                      <Form.Control type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." size="lg" disabled={isLoading} />
+                      <Form.Control
+                        type="text"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        size="lg"
+                        disabled={isLoading || !serverHealthy} // Disable if unhealthy
+                      />
                     </Col>
                     <Col xs="auto">
-                      <Button variant="primary" type="submit" size="lg" disabled={isLoading} className="px-4">
+                      <Button
+                        variant="primary"
+                        type="submit"
+                        size="lg"
+                        disabled={isLoading || !serverHealthy} // Disable if unhealthy
+                        className="px-4"
+                      >
                         {isLoading ? <Spinner animation="border" size="sm" /> : "Go"}
                       </Button>
                     </Col>
