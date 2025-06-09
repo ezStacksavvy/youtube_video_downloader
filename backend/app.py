@@ -18,6 +18,8 @@ COOKIE_FILE_PATHS = [
     '/etc/secrets/cookies1.txt',
     '/etc/secrets/cookies2.txt',
     '/etc/secrets/cookies3.txt',
+    '/etc/secrets/cookies4.txt',
+    '/etc/secrets/cookies5.txt',
     'cookies1.txt', # Local fallback
     'cookies2.txt', # Local fallback
     'cookies3.txt', # Local fallback
