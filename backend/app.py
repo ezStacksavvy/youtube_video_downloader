@@ -20,6 +20,9 @@ COOKIE_FILE_PATHS = [
     '/etc/secrets/cookies1.txt',
     '/etc/secrets/cookies2.txt',
     '/etc/secrets/cookies3.txt',
+    '/etc/secrets/cookies4.txt',
+    '/etc/secrets/cookies5.txt',
+    
     # Add more paths here if you uploaded more cookie files
     # '/etc/secrets/cookies4.txt',
 ]
