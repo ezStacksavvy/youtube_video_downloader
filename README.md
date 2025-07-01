@@ -30,7 +30,7 @@ cd your-repository-name
 - simply open Youtube.com and On the cookies Extension and choose Export Format: "Netscape"
 - Click on Export button...Don't Press Export All
 - Your Cookies will downlaoded with named "www.youtube.com_cookies"
-- Change the cookies Name to "cookies1.txt" and drag and drop to "Backend Folder" directory Where backend , frontend , README.md , setup.bat etc files and folder are present...
+- Change the cookies Name to "cookies1.txt" and drag and drop to "Backend Folder" directory. Remember that do not drop into any other folder just drop into Backend folder.
 
                             ## How To Run The Server
 - Open Terminal in Vs Code with " ctrl + ` " button below esc button
